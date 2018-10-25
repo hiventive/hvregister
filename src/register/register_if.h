@@ -10,8 +10,9 @@
 #ifndef HV_REGISTER_IF_H_
 #define HV_REGISTER_IF_H_
 
-#include <HVCommon>
-#include "register/field/field_if.h"
+#include <hv/common.h>
+
+#include "field/field_if.h"
 
 namespace hv {
 namespace reg {

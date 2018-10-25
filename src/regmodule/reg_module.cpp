@@ -7,7 +7,7 @@
  * @brief Register-style module
  */
 
-#include "regmodule/reg_module.h"
+#include "reg_module.h"
 
 namespace hv {
 namespace reg {

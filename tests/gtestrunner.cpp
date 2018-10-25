@@ -6,10 +6,10 @@
  *
  * @brief Test runner for Register project
  */
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include <ctime>
 #include <systemc>
-#include <HVConfiguration>
+#include <hv/configuration.h>
 
 int sc_main(int argc, char* argv[]) {
 	::hv::cfg::Broker myBroker("MyGlobalBroker");

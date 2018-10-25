@@ -14,8 +14,9 @@
 #include <vector>
 #include <map>
 #include <sstream>
-#include <HVCommon>
-#include "register/field/field.h"
+#include <hv/common.h>
+
+#include "field.h"
 
 namespace hv {
 namespace reg {

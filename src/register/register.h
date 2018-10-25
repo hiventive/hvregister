@@ -10,16 +10,16 @@
 #ifndef HV_REGISTER_H_
 #define HV_REGISTER_H_
 
-#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
 #include <vector>
-#include <HVCommon>
-#include "register/register_if.h"
-#include "register/callback/register_callback_if.h"
-#include "register/register_cci.h"
-#include "register/field/fields.h"
+#include <hv/common.h>
+
+#include "register_if.h"
+#include "callback/register_callback_if.h"
+#include "register_cci.h"
+#include "field/fields.h"
 
 namespace hv {
 namespace reg {

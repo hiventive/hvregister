@@ -7,11 +7,12 @@
  * @brief Register test
  */
 
-#include "common/hvutils.h"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <hv/common.h>
+
 #include "register/register.h"
 #include "register/register_cci.h"
 

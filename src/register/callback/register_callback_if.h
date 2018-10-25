@@ -11,7 +11,7 @@
 #ifndef HV_REGISTER_CALLBACK_IF_H_
 #define HV_REGISTER_CALLBACK_IF_H_
 
-#include "register/callback/register_callback_decl.h"
+#include "register_callback_decl.h"
 
 namespace hv {
 namespace reg {

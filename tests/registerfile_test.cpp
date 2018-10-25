@@ -11,7 +11,8 @@
 #include <iostream>
 #include <sstream>
 #include <gtest/gtest.h>
-#include <common/hvutils.h>
+#include <hv/common.h>
+
 #include "registerfile/registerfile.h"
 
 using namespace ::hv::common;

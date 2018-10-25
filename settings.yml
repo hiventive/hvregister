@@ -1,10 +1,10 @@
 # Settings
 
 project:
-  name: Register
-  version: 0.2.0
+  name: HVRegister
+  version: 0.3.0
 
 conan:
-  name: register
+  name: hvregister
   channel: testing
   username: hiventive

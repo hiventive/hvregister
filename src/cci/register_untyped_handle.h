@@ -10,8 +10,8 @@
 #ifndef CCI_REGISTER_UNTYPED_HANDLE_H_
 #define CCI_REGISTER_UNTYPED_HANDLE_H_
 
-#include <HVCommon>
-#include <HVConfiguration>
+#include <hv/common.h>
+#include <hv/configuration.h>
 
 namespace hv {
 namespace hvcci {

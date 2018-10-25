@@ -7,7 +7,7 @@
  * @brief Register class
  */
 
-#include "register/register.h"
+#include "register.h"
 
 using namespace ::hv::common;
 

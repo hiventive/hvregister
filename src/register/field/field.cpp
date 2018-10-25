@@ -7,7 +7,7 @@
  * @brief Field representation
  */
 
-#include "register/field/field.h"
+#include "field.h"
 
 using namespace ::hv::common;
 

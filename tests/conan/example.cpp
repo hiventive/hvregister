@@ -1,5 +1,6 @@
 #include <iostream>
-#include <HVRegister>
+#include <hv/common.h>
+#include <hv/register.h>
 
 using namespace ::hv::common;
 using namespace ::hv::reg;

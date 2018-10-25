@@ -10,9 +10,10 @@
 #ifndef HV_REGMODULE_H
 #define HV_REGMODULE_H
 
-#include <HVCommunication>
-#include <HVModule>
-#include "registerfile/registerfile.h"
+#include <hv/communication.h>
+#include <hv/module.h>
+
+#include "../registerfile/registerfile.h"
 
 namespace hv {
 namespace reg {
@@ -111,6 +112,6 @@ protected:
 }
 }
 
-#include "regmodule/reg_module.hpp"
+#include "reg_module.hpp"
 
 #endif // HV_REGMODULE_H

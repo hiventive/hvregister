@@ -7,8 +7,8 @@
  * @brief CCI Register callback untyped handle
  */
 
-#include "cci/register_untyped_handle.h"
-#include "cci/register_if.h"
+#include "register_untyped_handle.h"
+#include "register_if.h"
 
 using namespace ::cci;
 

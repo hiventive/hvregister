@@ -10,14 +10,14 @@
 #ifndef HV_REGISTERFILE_H_
 #define HV_REGISTERFILE_H_
 
-#include <cstdlib>
 #include <iostream>
 #include <algorithm>
 #include <vector>
 #include <map>
-#include <HVCommon>
-#include "registerfile/registerfile_if.h"
-#include "register/register.h"
+#include <hv/common.h>
+
+#include "registerfile_if.h"
+#include "../register/register.h"
 
 namespace hv {
 namespace reg {

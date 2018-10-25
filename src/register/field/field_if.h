@@ -10,7 +10,6 @@
 #ifndef HV_FIELD_IF_H_
 #define HV_FIELD_IF_H_
 
-#include <cstdlib>
 #include <iostream>
 
 namespace hv {

@@ -7,7 +7,7 @@
  * @brief Hiventive Register callback class
  */
 
-#include "register/callback/register_callback_decl.h"
+#include "register_callback_decl.h"
 
 
 namespace hv {

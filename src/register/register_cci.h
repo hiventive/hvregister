@@ -10,9 +10,10 @@
 #ifndef HV_REGISTER_CCI_H_
 #define HV_REGISTER_CCI_H_
 
-#include <HVCommon>
-#include <HVConfiguration>
-#include "cci/register_if.h"
+#include <hv/common.h>
+#include <hv/configuration.h>
+
+#include "../cci/register_if.h"
 
 namespace hv {
 namespace reg {

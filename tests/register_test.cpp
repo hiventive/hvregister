@@ -7,12 +7,13 @@
  * @brief Register test
  */
 
-#include "register/register.h"
-#include "common/hvutils.h"
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <hv/common.h>
+
+#include "register/register-private.h"
 
 using namespace ::hv::common;
 using namespace ::hv::reg;

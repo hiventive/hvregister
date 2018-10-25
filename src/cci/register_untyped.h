@@ -8,9 +8,10 @@
 #ifndef SRC_CCI_REGISTER_UNTYPED_H_
 #define SRC_CCI_REGISTER_UNTYPED_H_
 
-#include <HVCommon>
+#include <hv/common.h>
 #include <algorithm>
-#include "cci/register_if.h"
+
+#include "register_if.h"
 
 namespace hv {
 namespace hvcci {

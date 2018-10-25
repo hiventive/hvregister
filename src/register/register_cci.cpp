@@ -7,10 +7,9 @@
  * @brief Register CCI compatibility class
  */
 
-#include "register/register_cci.h"
-#include "register/register.h"
-#include "cci/register_callback_if.h"
-
+#include "register_cci.h"
+#include "register.h"
+#include "../cci/register_callback_if.h"
 
 using namespace ::hv::common;
 

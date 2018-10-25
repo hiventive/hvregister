@@ -12,7 +12,7 @@
 #include <sstream>
 #include <cstring>
 #include <gtest/gtest.h>
-#include <common/callback.h>
+#include <hv/common.h>
 
 using namespace ::hv::common;
 

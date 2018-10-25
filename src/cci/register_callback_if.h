@@ -10,8 +10,9 @@
 #ifndef CCI_REGISTER_CALLBACK_IF_H_
 #define CCI_REGISTER_CALLBACK_IF_H_
 
-#include <HVCommon>
-#include "cci/register_untyped_handle.h"
+#include <hv/common.h>
+
+#include "register_untyped_handle.h"
 
 namespace hv {
 namespace hvcci {

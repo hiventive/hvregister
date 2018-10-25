@@ -19,9 +19,9 @@ stages:
     -  python3 scripts/ci-before.py init
     -  python3 scripts/ci-before.py clean-conan-testing
   script:
-    - conan install . --build outdated
     - mkdir build
     - cd build
+    - conan install .. --build outdated
     - cmake -DBUILD_TESTS=ON ..
     - make
   artifacts:
@@ -30,6 +30,10 @@ stages:
       - .conan
     expire_in: 24h
     when: on_success
+  cache:
+    paths:
+      - .conan
+    key: "$CI_JOB_NAME"
 
 .build_windows_msvc: &build_windows_msvc
   stage: build
@@ -39,9 +43,9 @@ stages:
     - python3 scripts/ci-before.py init
     - python3 scripts/ci-before.py clean-conan-testing
   script:
-    - conan install . --build outdated
     - mkdir build
     - cd build
+    - conan install .. --build outdated
     - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
     - cmake --build . --config Release
   artifacts:
@@ -64,8 +68,8 @@ stages:
     - Invoke-Expression $setupEnv
     - python3 scripts/ci-before.py init
   script:
-    - conan install .
     - cd build
+    - conan install ..
     - Remove-Item "CMakeCache.txt"
     - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
     - $env:CTEST_OUTPUT_ON_FAILURE=1
@@ -77,7 +81,6 @@ stages:
     - "`python3 scripts/ci-before.py setup-env`"
     - python3 scripts/ci-before.py init
   script:
-    - conan install . --build outdated
     - if [ -f "scripts/ci-conan-build.py" ]; then python3 scripts/ci-conan-build.py; else conan create -tf tests/conan . $CONAN_USERNAME/$CONAN_CHANNEL; fi
   artifacts:
     paths:
@@ -92,7 +95,6 @@ stages:
     - Invoke-Expression $setupEnv
     - python3 scripts/ci-before.py init
   script:
-    - conan install . --build outdated
     - If (Test-Path "scripts/ci-conan-build.py") { python3 scripts/ci-conan-build.py } Else { conan create -tf tests/conan . "$($env:CONAN_USERNAME)/$($env:CONAN_CHANNEL)" }
   artifacts:
     paths:
@@ -132,9 +134,9 @@ stages:
     -  python3 scripts/ci-before.py init
     -  python3 scripts/ci-before.py clean-conan-testing
   script:
-    - conan install . --build outdated
     - mkdir build
     - cd build
+    - conan install .. --build outdated
     - cmake -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release ..
     - make
   artifacts:
@@ -143,6 +145,10 @@ stages:
       - .conan
     expire_in: 24h
     when: on_success
+  cache:
+    paths:
+      - .conan
+    key: "$CI_JOB_NAME"
   only:
     variables:
       - $TRIGGER_NIGHTLY
@@ -155,9 +161,9 @@ stages:
     - python3 scripts/ci-before.py init
     - python3 scripts/ci-before.py clean-conan-testing
   script:
-    - conan install . --build outdated
     - mkdir build
     - cd build
+    - conan install .. --build outdated
     - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
     - cmake --build . --config Release
   artifacts:
@@ -186,8 +192,8 @@ stages:
     - Invoke-Expression $setupEnv
     - python3 scripts/ci-before.py init
   script:
-    - conan install .
     - cd build
+    - conan install ..
     - Remove-Item "CMakeCache.txt"
     - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
     - $env:CTEST_OUTPUT_ON_FAILURE=1
@@ -200,180 +206,180 @@ stages:
 
 build:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *build_unix_make
   tags:
     - ubuntu-14.04
 
 build:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *build_unix_make
   tags:
     - ubuntu-14.04
 
 build:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *build_unix_make
   tags:
     - ubuntu-16.04
 
 build:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *build_unix_make
   tags:
     - ubuntu-16.04
 
 build:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *build_unix_make
   tags:
     - ubuntu-18.04
 
 build:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *build_unix_make
   tags:
     - ubuntu-18.04
 
 build:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *build_unix_make
   tags:
     - debian-8
 
 build:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *build_unix_make
   tags:
     - debian-8
 
 build:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *build_unix_make
   tags:
     - debian-9
 
 build:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *build_unix_make
   tags:
     - debian-9
 
 build:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *build_unix_make
   tags:
     - fedora-25
 
 build:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *build_unix_make
   tags:
     - fedora-25
 
 build:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *build_unix_make
   tags:
     - fedora-26
 
 build:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *build_unix_make
   tags:
     - fedora-26
 
 build:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *build_unix_make
   tags:
     - fedora-27
 
 build:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *build_unix_make
   tags:
     - fedora-27
 
 build:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *build_unix_make
   tags:
     - fedora-28
 
 build:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *build_unix_make
   tags:
     - fedora-28
 
 build:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *build_unix_make
   tags:
     - centos-7
 
 build:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *build_unix_make
   tags:
     - centos-7
@@ -384,6 +390,10 @@ build:windows-7-v120_CTP_Nov2012:
     VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
     VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-7-v120_CTP_Nov2012"
   tags:
     - windows-7
 
@@ -393,6 +403,10 @@ build:windows-7-CTP_Nov2013:
     VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
     VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-7-CTP_Nov2013"
   tags:
     - windows-7
 
@@ -402,6 +416,10 @@ build:windows-7-v140:
     VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
     VISUAL_STUDIO_TOOLSET: "v140"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-7-v140"
   tags:
     - windows-7
 
@@ -411,6 +429,10 @@ build:windows-7-v141:
     VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
     VISUAL_STUDIO_TOOLSET: "v141"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-7-v141"
   tags:
     - windows-7
 
@@ -420,6 +442,10 @@ build:windows-10-v120_CTP_Nov2012:
     VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
     VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-10-v120_CTP_Nov2012"
   tags:
     - windows-10
 
@@ -429,6 +455,10 @@ build:windows-10-CTP_Nov2013:
     VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
     VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-10-CTP_Nov2013"
   tags:
     - windows-10
 
@@ -438,6 +468,10 @@ build:windows-10-v140:
     VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
     VISUAL_STUDIO_TOOLSET: "v140"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-10-v140"
   tags:
     - windows-10
 
@@ -447,14 +481,18 @@ build:windows-10-v141:
     VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
     VISUAL_STUDIO_TOOLSET: "v141"
   <<: *build_windows_msvc
+  cache:
+    paths:
+      - .conan
+    key: "build-windows-10-v141"
   tags:
     - windows-10
 
 test:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-14.04-gnu
@@ -463,9 +501,9 @@ test:ubuntu-14.04-gnu:
 
 test:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-14.04-llvm
@@ -474,9 +512,9 @@ test:ubuntu-14.04-llvm:
 
 test:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-16.04-gnu
@@ -485,9 +523,9 @@ test:ubuntu-16.04-gnu:
 
 test:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-16.04-llvm
@@ -496,9 +534,9 @@ test:ubuntu-16.04-llvm:
 
 test:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-18.04-gnu
@@ -507,9 +545,9 @@ test:ubuntu-18.04-gnu:
 
 test:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *test_unix_make
   dependencies:
     - build:ubuntu-18.04-llvm
@@ -518,9 +556,9 @@ test:ubuntu-18.04-llvm:
 
 test:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *test_unix_make
   dependencies:
     - build:debian-8-gnu
@@ -529,9 +567,9 @@ test:debian-8-gnu:
 
 test:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *test_unix_make
   dependencies:
     - build:debian-8-llvm
@@ -540,9 +578,9 @@ test:debian-8-llvm:
 
 test:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *test_unix_make
   dependencies:
     - build:debian-9-gnu
@@ -551,9 +589,9 @@ test:debian-9-gnu:
 
 test:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *test_unix_make
   dependencies:
     - build:debian-9-llvm
@@ -562,9 +600,9 @@ test:debian-9-llvm:
 
 test:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *test_unix_make
   dependencies:
     - build:fedora-25-gnu
@@ -573,9 +611,9 @@ test:fedora-25-gnu:
 
 test:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *test_unix_make
   dependencies:
     - build:fedora-25-llvm
@@ -584,9 +622,9 @@ test:fedora-25-llvm:
 
 test:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *test_unix_make
   dependencies:
     - build:fedora-26-gnu
@@ -595,9 +633,9 @@ test:fedora-26-gnu:
 
 test:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *test_unix_make
   dependencies:
     - build:fedora-26-llvm
@@ -606,9 +644,9 @@ test:fedora-26-llvm:
 
 test:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *test_unix_make
   dependencies:
     - build:fedora-27-gnu
@@ -617,9 +655,9 @@ test:fedora-27-gnu:
 
 test:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *test_unix_make
   dependencies:
     - build:fedora-27-llvm
@@ -628,9 +666,9 @@ test:fedora-27-llvm:
 
 test:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *test_unix_make
   dependencies:
     - build:fedora-28-gnu
@@ -639,9 +677,9 @@ test:fedora-28-gnu:
 
 test:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *test_unix_make
   dependencies:
     - build:fedora-28-llvm
@@ -650,9 +688,9 @@ test:fedora-28-llvm:
 
 test:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *test_unix_make
   dependencies:
     - build:centos-7-gnu
@@ -661,9 +699,9 @@ test:centos-7-gnu:
 
 test:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *test_unix_make
   dependencies:
     - build:centos-7-llvm
@@ -760,9 +798,9 @@ test:windows-10-v141:
 
 package:build:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-14.04-gnu
@@ -771,9 +809,9 @@ package:build:ubuntu-14.04-gnu:
 
 package:build:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-14.04-llvm
@@ -782,9 +820,9 @@ package:build:ubuntu-14.04-llvm:
 
 package:build:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-16.04-gnu
@@ -793,9 +831,9 @@ package:build:ubuntu-16.04-gnu:
 
 package:build:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-16.04-llvm
@@ -804,9 +842,9 @@ package:build:ubuntu-16.04-llvm:
 
 package:build:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-18.04-gnu
@@ -815,9 +853,9 @@ package:build:ubuntu-18.04-gnu:
 
 package:build:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *package_build_unix
   dependencies:
     - build:ubuntu-18.04-llvm
@@ -826,9 +864,9 @@ package:build:ubuntu-18.04-llvm:
 
 package:build:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *package_build_unix
   dependencies:
     - build:debian-8-gnu
@@ -837,9 +875,9 @@ package:build:debian-8-gnu:
 
 package:build:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *package_build_unix
   dependencies:
     - build:debian-8-llvm
@@ -848,9 +886,9 @@ package:build:debian-8-llvm:
 
 package:build:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *package_build_unix
   dependencies:
     - build:debian-9-gnu
@@ -859,9 +897,9 @@ package:build:debian-9-gnu:
 
 package:build:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *package_build_unix
   dependencies:
     - build:debian-9-llvm
@@ -870,9 +908,9 @@ package:build:debian-9-llvm:
 
 package:build:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *package_build_unix
   dependencies:
     - build:fedora-25-gnu
@@ -881,9 +919,9 @@ package:build:fedora-25-gnu:
 
 package:build:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *package_build_unix
   dependencies:
     - build:fedora-25-llvm
@@ -892,9 +930,9 @@ package:build:fedora-25-llvm:
 
 package:build:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *package_build_unix
   dependencies:
     - build:fedora-26-gnu
@@ -903,9 +941,9 @@ package:build:fedora-26-gnu:
 
 package:build:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *package_build_unix
   dependencies:
     - build:fedora-26-llvm
@@ -914,9 +952,9 @@ package:build:fedora-26-llvm:
 
 package:build:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *package_build_unix
   dependencies:
     - build:fedora-27-gnu
@@ -925,9 +963,9 @@ package:build:fedora-27-gnu:
 
 package:build:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *package_build_unix
   dependencies:
     - build:fedora-27-llvm
@@ -936,9 +974,9 @@ package:build:fedora-27-llvm:
 
 package:build:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *package_build_unix
   dependencies:
     - build:fedora-28-gnu
@@ -947,9 +985,9 @@ package:build:fedora-28-gnu:
 
 package:build:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *package_build_unix
   dependencies:
     - build:fedora-28-llvm
@@ -958,9 +996,9 @@ package:build:fedora-28-llvm:
 
 package:build:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *package_build_unix
   dependencies:
     - build:centos-7-gnu
@@ -969,9 +1007,9 @@ package:build:centos-7-gnu:
 
 package:build:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *package_build_unix
   dependencies:
     - build:centos-7-llvm
@@ -1068,9 +1106,9 @@ package:build:windows-10-v141:
 
 package:upload:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-14.04-gnu
@@ -1079,9 +1117,9 @@ package:upload:ubuntu-14.04-gnu:
 
 package:upload:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-14.04-llvm
@@ -1090,9 +1128,9 @@ package:upload:ubuntu-14.04-llvm:
 
 package:upload:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-16.04-gnu
@@ -1101,9 +1139,9 @@ package:upload:ubuntu-16.04-gnu:
 
 package:upload:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-16.04-llvm
@@ -1112,9 +1150,9 @@ package:upload:ubuntu-16.04-llvm:
 
 package:upload:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-18.04-gnu
@@ -1123,9 +1161,9 @@ package:upload:ubuntu-18.04-gnu:
 
 package:upload:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *package_upload_unix
   dependencies:
     - package:build:ubuntu-18.04-llvm
@@ -1134,9 +1172,9 @@ package:upload:ubuntu-18.04-llvm:
 
 package:upload:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *package_upload_unix
   dependencies:
     - package:build:debian-8-gnu
@@ -1145,9 +1183,9 @@ package:upload:debian-8-gnu:
 
 package:upload:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *package_upload_unix
   dependencies:
     - package:build:debian-8-llvm
@@ -1156,9 +1194,9 @@ package:upload:debian-8-llvm:
 
 package:upload:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *package_upload_unix
   dependencies:
     - package:build:debian-9-gnu
@@ -1167,9 +1205,9 @@ package:upload:debian-9-gnu:
 
 package:upload:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *package_upload_unix
   dependencies:
     - package:build:debian-9-llvm
@@ -1178,9 +1216,9 @@ package:upload:debian-9-llvm:
 
 package:upload:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-25-gnu
@@ -1189,9 +1227,9 @@ package:upload:fedora-25-gnu:
 
 package:upload:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-25-llvm
@@ -1200,9 +1238,9 @@ package:upload:fedora-25-llvm:
 
 package:upload:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-26-gnu
@@ -1211,9 +1249,9 @@ package:upload:fedora-26-gnu:
 
 package:upload:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-26-llvm
@@ -1222,9 +1260,9 @@ package:upload:fedora-26-llvm:
 
 package:upload:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-27-gnu
@@ -1233,9 +1271,9 @@ package:upload:fedora-27-gnu:
 
 package:upload:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-27-llvm
@@ -1244,9 +1282,9 @@ package:upload:fedora-27-llvm:
 
 package:upload:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-28-gnu
@@ -1255,9 +1293,9 @@ package:upload:fedora-28-gnu:
 
 package:upload:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *package_upload_unix
   dependencies:
     - package:build:fedora-28-llvm
@@ -1266,9 +1304,9 @@ package:upload:fedora-28-llvm:
 
 package:upload:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *package_upload_unix
   dependencies:
     - package:build:centos-7-gnu
@@ -1277,9 +1315,9 @@ package:upload:centos-7-gnu:
 
 package:upload:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *package_upload_unix
   dependencies:
     - package:build:centos-7-llvm
@@ -1376,9 +1414,9 @@ package:upload:windows-10-v141:
 
 build:release:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1386,9 +1424,9 @@ build:release:ubuntu-14.04-gnu:
 
 build:release:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1396,9 +1434,9 @@ build:release:ubuntu-14.04-llvm:
 
 build:release:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1406,9 +1444,9 @@ build:release:ubuntu-16.04-gnu:
 
 build:release:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1416,9 +1454,9 @@ build:release:ubuntu-16.04-llvm:
 
 build:release:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1426,9 +1464,9 @@ build:release:ubuntu-18.04-gnu:
 
 build:release:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1436,9 +1474,9 @@ build:release:ubuntu-18.04-llvm:
 
 build:release:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1446,9 +1484,9 @@ build:release:debian-8-gnu:
 
 build:release:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1456,9 +1494,9 @@ build:release:debian-8-llvm:
 
 build:release:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1466,9 +1504,9 @@ build:release:debian-9-gnu:
 
 build:release:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1476,9 +1514,9 @@ build:release:debian-9-llvm:
 
 build:release:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1486,9 +1524,9 @@ build:release:fedora-25-gnu:
 
 build:release:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1496,9 +1534,9 @@ build:release:fedora-25-llvm:
 
 build:release:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1506,9 +1544,9 @@ build:release:fedora-26-gnu:
 
 build:release:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1516,9 +1554,9 @@ build:release:fedora-26-llvm:
 
 build:release:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1526,9 +1564,9 @@ build:release:fedora-27-gnu:
 
 build:release:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1536,9 +1574,9 @@ build:release:fedora-27-llvm:
 
 build:release:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1546,9 +1584,9 @@ build:release:fedora-28-gnu:
 
 build:release:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1556,9 +1594,9 @@ build:release:fedora-28-llvm:
 
 build:release:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1566,9 +1604,9 @@ build:release:centos-7-gnu:
 
 build:release:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *build_release_unix_make
   dependencies: []
   tags:
@@ -1581,6 +1619,10 @@ build:release:windows-7-v120_CTP_Nov2012:
     VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-7-v120_CTP_Nov2012"
   tags:
     - windows-7
 
@@ -1591,6 +1633,10 @@ build:release:windows-7-CTP_Nov2013:
     VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-7-CTP_Nov2013"
   tags:
     - windows-7
 
@@ -1601,6 +1647,10 @@ build:release:windows-7-v140:
     VISUAL_STUDIO_TOOLSET: "v140"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-7-v140"
   tags:
     - windows-7
 
@@ -1611,6 +1661,10 @@ build:release:windows-7-v141:
     VISUAL_STUDIO_TOOLSET: "v141"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-7-v141"
   tags:
     - windows-7
 
@@ -1621,6 +1675,10 @@ build:release:windows-10-v120_CTP_Nov2012:
     VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-10-v120_CTP_Nov2012"
   tags:
     - windows-10
 
@@ -1631,6 +1689,10 @@ build:release:windows-10-CTP_Nov2013:
     VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-10-CTP_Nov2013"
   tags:
     - windows-10
 
@@ -1641,6 +1703,10 @@ build:release:windows-10-v140:
     VISUAL_STUDIO_TOOLSET: "v140"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-10-v140"
   tags:
     - windows-10
 
@@ -1651,14 +1717,18 @@ build:release:windows-10-v141:
     VISUAL_STUDIO_TOOLSET: "v141"
   <<: *build_release_windows_msvc
   dependencies: []
+  cache:
+    paths:
+      - .conan
+    key: "build:release-windows-10-v141"
   tags:
     - windows-10
 
 test:release:ubuntu-14.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-14.04-gnu
@@ -1667,9 +1737,9 @@ test:release:ubuntu-14.04-gnu:
 
 test:release:ubuntu-14.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-14.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-14.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-14.04-llvm
@@ -1678,9 +1748,9 @@ test:release:ubuntu-14.04-llvm:
 
 test:release:ubuntu-16.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-16.04-gnu
@@ -1689,9 +1759,9 @@ test:release:ubuntu-16.04-gnu:
 
 test:release:ubuntu-16.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-16.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-16.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-16.04-llvm
@@ -1700,9 +1770,9 @@ test:release:ubuntu-16.04-llvm:
 
 test:release:ubuntu-18.04-gnu:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-18.04-gnu
@@ -1711,9 +1781,9 @@ test:release:ubuntu-18.04-gnu:
 
 test:release:ubuntu-18.04-llvm:
   variables:
+    RUNNER_OS: "ubuntu-18.04"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "ubuntu-18.04"
   <<: *test_release_unix_make
   dependencies:
     - build:release:ubuntu-18.04-llvm
@@ -1722,9 +1792,9 @@ test:release:ubuntu-18.04-llvm:
 
 test:release:debian-8-gnu:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-8"
   <<: *test_release_unix_make
   dependencies:
     - build:release:debian-8-gnu
@@ -1733,9 +1803,9 @@ test:release:debian-8-gnu:
 
 test:release:debian-8-llvm:
   variables:
+    RUNNER_OS: "debian-8"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-8"
   <<: *test_release_unix_make
   dependencies:
     - build:release:debian-8-llvm
@@ -1744,9 +1814,9 @@ test:release:debian-8-llvm:
 
 test:release:debian-9-gnu:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "debian-9"
   <<: *test_release_unix_make
   dependencies:
     - build:release:debian-9-gnu
@@ -1755,9 +1825,9 @@ test:release:debian-9-gnu:
 
 test:release:debian-9-llvm:
   variables:
+    RUNNER_OS: "debian-9"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "debian-9"
   <<: *test_release_unix_make
   dependencies:
     - build:release:debian-9-llvm
@@ -1766,9 +1836,9 @@ test:release:debian-9-llvm:
 
 test:release:fedora-25-gnu:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-25"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-25-gnu
@@ -1777,9 +1847,9 @@ test:release:fedora-25-gnu:
 
 test:release:fedora-25-llvm:
   variables:
+    RUNNER_OS: "fedora-25"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-25"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-25-llvm
@@ -1788,9 +1858,9 @@ test:release:fedora-25-llvm:
 
 test:release:fedora-26-gnu:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-26"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-26-gnu
@@ -1799,9 +1869,9 @@ test:release:fedora-26-gnu:
 
 test:release:fedora-26-llvm:
   variables:
+    RUNNER_OS: "fedora-26"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-26"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-26-llvm
@@ -1810,9 +1880,9 @@ test:release:fedora-26-llvm:
 
 test:release:fedora-27-gnu:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-27"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-27-gnu
@@ -1821,9 +1891,9 @@ test:release:fedora-27-gnu:
 
 test:release:fedora-27-llvm:
   variables:
+    RUNNER_OS: "fedora-27"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-27"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-27-llvm
@@ -1832,9 +1902,9 @@ test:release:fedora-27-llvm:
 
 test:release:fedora-28-gnu:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "fedora-28"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-28-gnu
@@ -1843,9 +1913,9 @@ test:release:fedora-28-gnu:
 
 test:release:fedora-28-llvm:
   variables:
+    RUNNER_OS: "fedora-28"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "fedora-28"
   <<: *test_release_unix_make
   dependencies:
     - build:release:fedora-28-llvm
@@ -1854,9 +1924,9 @@ test:release:fedora-28-llvm:
 
 test:release:centos-7-gnu:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "gcc"
     CXX: "g++"
-    RUNNER_OS: "centos-7"
   <<: *test_release_unix_make
   dependencies:
     - build:release:centos-7-gnu
@@ -1865,9 +1935,9 @@ test:release:centos-7-gnu:
 
 test:release:centos-7-llvm:
   variables:
+    RUNNER_OS: "centos-7"
     CC: "clang"
     CXX: "clang++"
-    RUNNER_OS: "centos-7"
   <<: *test_release_unix_make
   dependencies:
     - build:release:centos-7-llvm

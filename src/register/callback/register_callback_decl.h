@@ -12,7 +12,7 @@
 #ifndef HV_REGISTER_CALLBACK_DECL_H_
 #define HV_REGISTER_CALLBACK_DECL_H_
 
-#include <HVCommon>
+#include <hv/common.h>
 #include <algorithm>
 
 namespace hv {

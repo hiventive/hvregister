@@ -10,9 +10,10 @@
 #ifndef CCI_REGISTER_IF_H_
 #define CCI_REGISTER_IF_H_
 
-#include <HVConfiguration>
-#include "register/field/field_if.h"
-#include "cci/register_callback_if.h"
+#include <hv/configuration.h>
+
+#include "../register/field/field_if.h"
+#include "register_callback_if.h"
 
 namespace hv {
 namespace hvcci {

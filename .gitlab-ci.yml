@@ -1,0 +1,1963 @@
+# Gitlab CI
+
+# Stages
+
+stages:
+  - build
+  - test
+  - package:build
+  - package:upload
+  - build:release
+  - test:release
+
+# Templates
+
+.build_unix_make: &build_unix_make
+  stage: build
+  before_script:
+    - "`python3 scripts/ci-before.py setup-env`"
+    -  python3 scripts/ci-before.py init
+    -  python3 scripts/ci-before.py clean-conan-testing
+  script:
+    - conan install . --build outdated
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_TESTS=ON ..
+    - make
+  artifacts:
+    paths:
+      - build/
+      - .conan
+    expire_in: 24h
+    when: on_success
+
+.build_windows_msvc: &build_windows_msvc
+  stage: build
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+    - python3 scripts/ci-before.py clean-conan-testing
+  script:
+    - conan install . --build outdated
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
+    - cmake --build . --config Release
+  artifacts:
+    paths:
+      - build/
+      - .conan
+    expire_in: 24h
+    when: on_success
+
+.test_unix_make: &test_unix_make
+  stage: test
+  script:
+    - cd build
+    - CTEST_OUTPUT_ON_FAILURE=1 make test
+
+.test_windows_msvc: &test_windows_msvc
+  stage: test
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+  script:
+    - conan install .
+    - cd build
+    - Remove-Item "CMakeCache.txt"
+    - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
+    - $env:CTEST_OUTPUT_ON_FAILURE=1
+    - ctest -C "Release"
+
+.package_build_unix: &package_build_unix
+  stage: package:build
+  before_script:
+    - "`python3 scripts/ci-before.py setup-env`"
+    - python3 scripts/ci-before.py init
+  script:
+    - conan install . --build outdated
+    - if [ -f "scripts/ci-conan-build.py" ]; then python3 scripts/ci-conan-build.py; else conan create -tf tests/conan . $CONAN_USERNAME/$CONAN_CHANNEL; fi
+  artifacts:
+    paths:
+      - .conan
+    expire_in: 24h
+    when: on_success
+
+.package_build_windows: &package_build_windows
+  stage: package:build
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+  script:
+    - conan install . --build outdated
+    - If (Test-Path "scripts/ci-conan-build.py") { python3 scripts/ci-conan-build.py } Else { conan create -tf tests/conan . "$($env:CONAN_USERNAME)/$($env:CONAN_CHANNEL)" }
+  artifacts:
+    paths:
+      - .conan
+    expire_in: 24h
+    when: on_success
+
+.package_upload_unix: &package_upload_unix
+  stage: package:upload
+  before_script:
+    - "`python3 scripts/ci-before.py setup-env`"
+    -  python3 scripts/ci-before.py init
+  script:
+    - conan upload $CONAN_REFERENCE@$CONAN_USERNAME/$CONAN_CHANNEL --all --force --remote $CONAN_REMOTE_NAME
+  retry: 2
+  only:
+    variables:
+      - $CONAN_PACKAGE_UPLOAD
+
+.package_upload_windows: &package_upload_windows
+  stage: package:upload
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+  script:
+    - conan upload "$($env:CONAN_REFERENCE)@$($env:CONAN_USERNAME)/$($env:CONAN_CHANNEL)" --all --force --remote "$($env:CONAN_REMOTE_NAME)"
+  retry: 2
+  only:
+    variables:
+      - $CONAN_PACKAGE_UPLOAD
+
+.build_release_unix_make: &build_release_unix_make
+  stage: build:release
+  before_script:
+    - "`python3 scripts/ci-before.py setup-env`"
+    -  python3 scripts/ci-before.py init
+    -  python3 scripts/ci-before.py clean-conan-testing
+  script:
+    - conan install . --build outdated
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release ..
+    - make
+  artifacts:
+    paths:
+      - build/
+      - .conan
+    expire_in: 24h
+    when: on_success
+  only:
+    variables:
+      - $TRIGGER_NIGHTLY
+
+.build_release_windows_msvc: &build_release_windows_msvc
+  stage: build:release
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+    - python3 scripts/ci-before.py clean-conan-testing
+  script:
+    - conan install . --build outdated
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
+    - cmake --build . --config Release
+  artifacts:
+    paths:
+      - build/
+      - .conan
+    expire_in: 24h
+    when: on_success
+  only:
+    variables:
+      - $TRIGGER_NIGHTLY
+
+.test_release_unix_make: &test_release_unix_make
+  stage: test:release
+  script:
+    - cd build
+    - CTEST_OUTPUT_ON_FAILURE=1 make test
+  only:
+    variables:
+      - $TRIGGER_NIGHTLY
+
+.test_release_windows_msvc: &test_release_windows_msvc
+  stage: test:release
+  before_script:
+    - $setupEnv = (python3 scripts/ci-before.py setup-env) | Out-String
+    - Invoke-Expression $setupEnv
+    - python3 scripts/ci-before.py init
+  script:
+    - conan install .
+    - cd build
+    - Remove-Item "CMakeCache.txt"
+    - cmake -DBUILD_TESTS=ON -G "$env:VISUAL_STUDIO_VERSION Win64" -D "CMAKE_GENERATOR_TOOLSET=$env:VISUAL_STUDIO_TOOLSET" ..
+    - $env:CTEST_OUTPUT_ON_FAILURE=1
+    - ctest -C "Release"
+  only:
+    variables:
+      - $TRIGGER_NIGHTLY
+
+# Jobs
+
+build:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-14.04
+
+build:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-14.04
+
+build:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-16.04
+
+build:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-16.04
+
+build:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-18.04
+
+build:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *build_unix_make
+  tags:
+    - ubuntu-18.04
+
+build:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *build_unix_make
+  tags:
+    - debian-8
+
+build:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *build_unix_make
+  tags:
+    - debian-8
+
+build:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *build_unix_make
+  tags:
+    - debian-9
+
+build:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *build_unix_make
+  tags:
+    - debian-9
+
+build:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *build_unix_make
+  tags:
+    - fedora-25
+
+build:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *build_unix_make
+  tags:
+    - fedora-25
+
+build:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *build_unix_make
+  tags:
+    - fedora-26
+
+build:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *build_unix_make
+  tags:
+    - fedora-26
+
+build:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *build_unix_make
+  tags:
+    - fedora-27
+
+build:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *build_unix_make
+  tags:
+    - fedora-27
+
+build:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *build_unix_make
+  tags:
+    - fedora-28
+
+build:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *build_unix_make
+  tags:
+    - fedora-28
+
+build:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *build_unix_make
+  tags:
+    - centos-7
+
+build:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *build_unix_make
+  tags:
+    - centos-7
+
+build:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *build_windows_msvc
+  tags:
+    - windows-7
+
+build:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *build_windows_msvc
+  tags:
+    - windows-7
+
+build:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *build_windows_msvc
+  tags:
+    - windows-7
+
+build:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *build_windows_msvc
+  tags:
+    - windows-7
+
+build:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *build_windows_msvc
+  tags:
+    - windows-10
+
+build:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *build_windows_msvc
+  tags:
+    - windows-10
+
+build:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *build_windows_msvc
+  tags:
+    - windows-10
+
+build:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *build_windows_msvc
+  tags:
+    - windows-10
+
+test:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-14.04-gnu
+  tags:
+    - ubuntu-14.04
+
+test:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-14.04-llvm
+  tags:
+    - ubuntu-14.04
+
+test:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-16.04-gnu
+  tags:
+    - ubuntu-16.04
+
+test:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-16.04-llvm
+  tags:
+    - ubuntu-16.04
+
+test:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-18.04-gnu
+  tags:
+    - ubuntu-18.04
+
+test:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *test_unix_make
+  dependencies:
+    - build:ubuntu-18.04-llvm
+  tags:
+    - ubuntu-18.04
+
+test:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *test_unix_make
+  dependencies:
+    - build:debian-8-gnu
+  tags:
+    - debian-8
+
+test:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *test_unix_make
+  dependencies:
+    - build:debian-8-llvm
+  tags:
+    - debian-8
+
+test:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *test_unix_make
+  dependencies:
+    - build:debian-9-gnu
+  tags:
+    - debian-9
+
+test:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *test_unix_make
+  dependencies:
+    - build:debian-9-llvm
+  tags:
+    - debian-9
+
+test:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-25-gnu
+  tags:
+    - fedora-25
+
+test:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-25-llvm
+  tags:
+    - fedora-25
+
+test:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-26-gnu
+  tags:
+    - fedora-26
+
+test:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-26-llvm
+  tags:
+    - fedora-26
+
+test:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-27-gnu
+  tags:
+    - fedora-27
+
+test:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-27-llvm
+  tags:
+    - fedora-27
+
+test:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-28-gnu
+  tags:
+    - fedora-28
+
+test:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *test_unix_make
+  dependencies:
+    - build:fedora-28-llvm
+  tags:
+    - fedora-28
+
+test:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *test_unix_make
+  dependencies:
+    - build:centos-7-gnu
+  tags:
+    - centos-7
+
+test:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *test_unix_make
+  dependencies:
+    - build:centos-7-llvm
+  tags:
+    - centos-7
+
+test:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-7-v120_CTP_Nov2012
+  tags:
+    - windows-7
+
+test:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-7-CTP_Nov2013
+  tags:
+    - windows-7
+
+test:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-7-v140
+  tags:
+    - windows-7
+
+test:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-7-v141
+  tags:
+    - windows-7
+
+test:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-10-v120_CTP_Nov2012
+  tags:
+    - windows-10
+
+test:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-10-CTP_Nov2013
+  tags:
+    - windows-10
+
+test:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-10-v140
+  tags:
+    - windows-10
+
+test:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *test_windows_msvc
+  dependencies:
+    - build:windows-10-v141
+  tags:
+    - windows-10
+
+package:build:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-14.04-gnu
+  tags:
+    - ubuntu-14.04
+
+package:build:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-14.04-llvm
+  tags:
+    - ubuntu-14.04
+
+package:build:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-16.04-gnu
+  tags:
+    - ubuntu-16.04
+
+package:build:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-16.04-llvm
+  tags:
+    - ubuntu-16.04
+
+package:build:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-18.04-gnu
+  tags:
+    - ubuntu-18.04
+
+package:build:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *package_build_unix
+  dependencies:
+    - build:ubuntu-18.04-llvm
+  tags:
+    - ubuntu-18.04
+
+package:build:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *package_build_unix
+  dependencies:
+    - build:debian-8-gnu
+  tags:
+    - debian-8
+
+package:build:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *package_build_unix
+  dependencies:
+    - build:debian-8-llvm
+  tags:
+    - debian-8
+
+package:build:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *package_build_unix
+  dependencies:
+    - build:debian-9-gnu
+  tags:
+    - debian-9
+
+package:build:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *package_build_unix
+  dependencies:
+    - build:debian-9-llvm
+  tags:
+    - debian-9
+
+package:build:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-25-gnu
+  tags:
+    - fedora-25
+
+package:build:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-25-llvm
+  tags:
+    - fedora-25
+
+package:build:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-26-gnu
+  tags:
+    - fedora-26
+
+package:build:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-26-llvm
+  tags:
+    - fedora-26
+
+package:build:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-27-gnu
+  tags:
+    - fedora-27
+
+package:build:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-27-llvm
+  tags:
+    - fedora-27
+
+package:build:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-28-gnu
+  tags:
+    - fedora-28
+
+package:build:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *package_build_unix
+  dependencies:
+    - build:fedora-28-llvm
+  tags:
+    - fedora-28
+
+package:build:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *package_build_unix
+  dependencies:
+    - build:centos-7-gnu
+  tags:
+    - centos-7
+
+package:build:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *package_build_unix
+  dependencies:
+    - build:centos-7-llvm
+  tags:
+    - centos-7
+
+package:build:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-7-v120_CTP_Nov2012
+  tags:
+    - windows-7
+
+package:build:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-7-CTP_Nov2013
+  tags:
+    - windows-7
+
+package:build:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-7-v140
+  tags:
+    - windows-7
+
+package:build:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-7-v141
+  tags:
+    - windows-7
+
+package:build:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-10-v120_CTP_Nov2012
+  tags:
+    - windows-10
+
+package:build:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-10-CTP_Nov2013
+  tags:
+    - windows-10
+
+package:build:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-10-v140
+  tags:
+    - windows-10
+
+package:build:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *package_build_windows
+  dependencies:
+    - build:windows-10-v141
+  tags:
+    - windows-10
+
+package:upload:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-14.04-gnu
+  tags:
+    - ubuntu-14.04
+
+package:upload:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-14.04-llvm
+  tags:
+    - ubuntu-14.04
+
+package:upload:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-16.04-gnu
+  tags:
+    - ubuntu-16.04
+
+package:upload:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-16.04-llvm
+  tags:
+    - ubuntu-16.04
+
+package:upload:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-18.04-gnu
+  tags:
+    - ubuntu-18.04
+
+package:upload:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:ubuntu-18.04-llvm
+  tags:
+    - ubuntu-18.04
+
+package:upload:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:debian-8-gnu
+  tags:
+    - debian-8
+
+package:upload:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:debian-8-llvm
+  tags:
+    - debian-8
+
+package:upload:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:debian-9-gnu
+  tags:
+    - debian-9
+
+package:upload:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:debian-9-llvm
+  tags:
+    - debian-9
+
+package:upload:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-25-gnu
+  tags:
+    - fedora-25
+
+package:upload:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-25-llvm
+  tags:
+    - fedora-25
+
+package:upload:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-26-gnu
+  tags:
+    - fedora-26
+
+package:upload:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-26-llvm
+  tags:
+    - fedora-26
+
+package:upload:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-27-gnu
+  tags:
+    - fedora-27
+
+package:upload:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-27-llvm
+  tags:
+    - fedora-27
+
+package:upload:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-28-gnu
+  tags:
+    - fedora-28
+
+package:upload:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:fedora-28-llvm
+  tags:
+    - fedora-28
+
+package:upload:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:centos-7-gnu
+  tags:
+    - centos-7
+
+package:upload:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *package_upload_unix
+  dependencies:
+    - package:build:centos-7-llvm
+  tags:
+    - centos-7
+
+package:upload:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-7-v120_CTP_Nov2012
+  tags:
+    - windows-7
+
+package:upload:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-7-CTP_Nov2013
+  tags:
+    - windows-7
+
+package:upload:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-7-v140
+  tags:
+    - windows-7
+
+package:upload:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-7-v141
+  tags:
+    - windows-7
+
+package:upload:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-10-v120_CTP_Nov2012
+  tags:
+    - windows-10
+
+package:upload:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-10-CTP_Nov2013
+  tags:
+    - windows-10
+
+package:upload:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-10-v140
+  tags:
+    - windows-10
+
+package:upload:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *package_upload_windows
+  dependencies:
+    - package:build:windows-10-v141
+  tags:
+    - windows-10
+
+build:release:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-14.04
+
+build:release:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-14.04
+
+build:release:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-16.04
+
+build:release:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-16.04
+
+build:release:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-18.04
+
+build:release:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - ubuntu-18.04
+
+build:release:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - debian-8
+
+build:release:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - debian-8
+
+build:release:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - debian-9
+
+build:release:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - debian-9
+
+build:release:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-25
+
+build:release:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-25
+
+build:release:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-26
+
+build:release:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-26
+
+build:release:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-27
+
+build:release:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-27
+
+build:release:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-28
+
+build:release:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - fedora-28
+
+build:release:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - centos-7
+
+build:release:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *build_release_unix_make
+  dependencies: []
+  tags:
+    - centos-7
+
+build:release:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-7
+
+build:release:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-7
+
+build:release:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-7
+
+build:release:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-7
+
+build:release:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-10
+
+build:release:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-10
+
+build:release:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-10
+
+build:release:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *build_release_windows_msvc
+  dependencies: []
+  tags:
+    - windows-10
+
+test:release:ubuntu-14.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-14.04-gnu
+  tags:
+    - ubuntu-14.04
+
+test:release:ubuntu-14.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-14.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-14.04-llvm
+  tags:
+    - ubuntu-14.04
+
+test:release:ubuntu-16.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-16.04-gnu
+  tags:
+    - ubuntu-16.04
+
+test:release:ubuntu-16.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-16.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-16.04-llvm
+  tags:
+    - ubuntu-16.04
+
+test:release:ubuntu-18.04-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-18.04-gnu
+  tags:
+    - ubuntu-18.04
+
+test:release:ubuntu-18.04-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "ubuntu-18.04"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:ubuntu-18.04-llvm
+  tags:
+    - ubuntu-18.04
+
+test:release:debian-8-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-8"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:debian-8-gnu
+  tags:
+    - debian-8
+
+test:release:debian-8-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-8"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:debian-8-llvm
+  tags:
+    - debian-8
+
+test:release:debian-9-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "debian-9"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:debian-9-gnu
+  tags:
+    - debian-9
+
+test:release:debian-9-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "debian-9"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:debian-9-llvm
+  tags:
+    - debian-9
+
+test:release:fedora-25-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-25"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-25-gnu
+  tags:
+    - fedora-25
+
+test:release:fedora-25-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-25"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-25-llvm
+  tags:
+    - fedora-25
+
+test:release:fedora-26-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-26"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-26-gnu
+  tags:
+    - fedora-26
+
+test:release:fedora-26-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-26"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-26-llvm
+  tags:
+    - fedora-26
+
+test:release:fedora-27-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-27"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-27-gnu
+  tags:
+    - fedora-27
+
+test:release:fedora-27-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-27"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-27-llvm
+  tags:
+    - fedora-27
+
+test:release:fedora-28-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "fedora-28"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-28-gnu
+  tags:
+    - fedora-28
+
+test:release:fedora-28-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "fedora-28"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:fedora-28-llvm
+  tags:
+    - fedora-28
+
+test:release:centos-7-gnu:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+    RUNNER_OS: "centos-7"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:centos-7-gnu
+  tags:
+    - centos-7
+
+test:release:centos-7-llvm:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+    RUNNER_OS: "centos-7"
+  <<: *test_release_unix_make
+  dependencies:
+    - build:release:centos-7-llvm
+  tags:
+    - centos-7
+
+test:release:windows-7-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-7-v120_CTP_Nov2012
+  tags:
+    - windows-7
+
+test:release:windows-7-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-7-CTP_Nov2013
+  tags:
+    - windows-7
+
+test:release:windows-7-v140:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-7-v140
+  tags:
+    - windows-7
+
+test:release:windows-7-v141:
+  variables:
+    RUNNER_OS: "windows-7"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-7-v141
+  tags:
+    - windows-7
+
+test:release:windows-10-v120_CTP_Nov2012:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 11 2012"
+    VISUAL_STUDIO_TOOLSET: "v120_CTP_Nov2012"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-10-v120_CTP_Nov2012
+  tags:
+    - windows-10
+
+test:release:windows-10-CTP_Nov2013:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 12 2013"
+    VISUAL_STUDIO_TOOLSET: "CTP_Nov2013"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-10-CTP_Nov2013
+  tags:
+    - windows-10
+
+test:release:windows-10-v140:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 14 2015"
+    VISUAL_STUDIO_TOOLSET: "v140"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-10-v140
+  tags:
+    - windows-10
+
+test:release:windows-10-v141:
+  variables:
+    RUNNER_OS: "windows-10"
+    VISUAL_STUDIO_VERSION: "Visual Studio 15 2017"
+    VISUAL_STUDIO_TOOLSET: "v141"
+  <<: *test_release_windows_msvc
+  dependencies:
+    - build:release:windows-10-v141
+  tags:
+    - windows-10

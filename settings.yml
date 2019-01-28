@@ -1,0 +1,10 @@
+# Settings
+
+project:
+  name: Register
+  version: 0.2.0
+
+conan:
+  name: register
+  channel: testing
+  username: hiventive

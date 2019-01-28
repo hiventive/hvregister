@@ -4,7 +4,7 @@ import yaml
 class HVRegisterConan(ConanFile):
     name = str(yaml.load(tools.load("settings.yml"))['conan']['name'])
     version = str(yaml.load(tools.load("settings.yml"))['project']['version'])
-    license = "AGPL-3.0-or-later"
+    license = "MIT"
     author = "Hiventive"
     url = "https://git.hiventive.com/framework/register"
     description = "Register"

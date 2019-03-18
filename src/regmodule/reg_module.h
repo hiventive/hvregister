@@ -107,6 +107,10 @@ protected:
 	void bTransportCb(mem_access_payload_type& txn, ::sc_core::sc_time& delay);
 
 	::hv::reg::RegisterFile mainRegisterFile;
+
+public:
+    ::hv::cfg::Param<bool> enable;
+    ::hv::cfg::Param<bool> reset;
 };
 
 }

@@ -100,6 +100,7 @@ cmake-build-debug/
 conanbuildinfo.txt
 conanbuildinfo.cmake
 conaninfo.txt
+graph_info.json
 
 # Mongo Explorer plugin:
 .idea/**/mongoSettings.xml
@@ -597,3 +598,6 @@ __pycache__/
 ### VisualStudio Patch ###
 # By default, sensitive information, such as encrypted password
 # should be stored in the .pubxml.user file.
+
+# VS Code
+.vscode

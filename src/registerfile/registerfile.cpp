@@ -499,7 +499,7 @@ Register& RegisterFile::getRegister(const std::string &name) const {
 RegisterFile& RegisterFile::getRegisterFile(const hvaddr_t &address) const {
 	rfmap_t::const_iterator tmp = registerFiles.find(address);
 	HV_ASSERT(tmp != registerFiles.end(),
-			"No register file @" << std::hex << std::uppercase << "0x" << address)
+			"No register file @0x{0:x}", address);
 	RegisterFile &ret = tmp->second;
 	return ret;
 }

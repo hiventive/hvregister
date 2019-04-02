@@ -12,11 +12,11 @@
 namespace hv {
 namespace reg {
 
-RegModule<8> mRegModule8("myRegModule8");
-RegModule<16> mRegModule16("myRegModule16");
-RegModule<32> mRegModule32("myRegModule32");
-RegModule<64> mRegModule64("myRegModule64");
-RegModule<128> mRegModule128("myRegModule128");
+RegModule<8> mRegModule8("MyRegModule8");
+RegModule<16> mRegModule16("MyRegModule16");
+RegModule<32> mRegModule32("MyRegModule32");
+RegModule<64> mRegModule64("MyRegModule64");
+RegModule<128> mRegModule128("MyRegModule128");
 
 } // namespace hv
 } // namespace module

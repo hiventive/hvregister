@@ -67,7 +67,8 @@ void RegModule<BUSWIDTH>::bTransportCb(mem_access_payload_type &txn, ::sc_core::
     // Therefore we concatenate the values of subsequent registers in our buffer
     while (txnSize) {
         Register &regTmp(mainRegisterFile(destination));
-        std::size_t opSize(HV_MIN(txnSize, regTmp.getSizeInBytes()));
+        ::std::size_t opSize(HV_MIN(txnSize, regTmp.getSizeInBytes()));
+
         ::hv::common::hvuint8_t *dataTmp(txn.getDataPtr());
         if (cmd == ::hv::communication::tlm2::protocols::memorymapped::MEM_MAP_READ_COMMAND) {
             if (!regTmp.read(dataTmp, opSize)) {
@@ -83,13 +84,13 @@ void RegModule<BUSWIDTH>::bTransportCb(mem_access_payload_type &txn, ::sc_core::
             }
         }
 
-        if (txnSize <= regTmp.getSizeInBytes()) {
-            txnSize = 0u;
-        } else {
-            txnSize -= regTmp.getSizeInBytes();
-            dataTmp += regTmp.getSizeInBytes() * sizeof(::hv::common::hvuint8_t);
-            destination += regTmp.getSizeInBytes() * sizeof(::hv::common::hvuint8_t);
+        if (txnSize <= mainRegisterFile.getAlignment()) {
+            return;
         }
+        
+        txnSize -= mainRegisterFile.getAlignment();
+        dataTmp += mainRegisterFile.getAlignment();
+        destination += mainRegisterFile.getAlignment();
     }
 }
 

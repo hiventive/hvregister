@@ -208,7 +208,7 @@ bool Register::write(const hvuint8_t* writeBuff, const std::size_t &writeSize) {
 
 bool Register::read(BitVector& dest) {
 	HV_ASSERT(dest.getSize() == this->getSize(),
-			"Destination BitVector must be the same size as the Register read from")
+			"Destination BitVector must be the same size as the Register read from");
 	hvuint8_t* readBuff = (hvuint8_t*) malloc(
 			sizeof(hvuint8_t) * this->getSizeInBytes());
 	if (readBuff == nullptr) {

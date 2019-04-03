@@ -14,6 +14,7 @@
 using namespace ::hv::common;
 using namespace ::hv::module;
 using namespace ::hv::reg;
+using namespace ::hv::communication::tlm2::protocols::memorymapped;
 
 class RegModuleTest : public ::testing::Test {
   protected:
@@ -73,12 +74,17 @@ class FooMMModule : public ::hv::module::Module {
 // Class to test inserting 16-bit registers in a 32-bit-aligned memory space
 class SomeRegModuleClass : public RegModule<> {
   public:
-    SomeRegModuleClass(ModuleName name_)
-        : RegModule<>(name_, 4), reg1(16, "reg1", "Register 1", RW),
-          reg2(16, "reg2", "Register 2", RW), reg3(16, "reg3", "Register 3", RW) {
-        this->addRegister(0x00, reg1);
-        this->addRegister(0x04, reg2);
-        this->addRegister(0x08, reg3);
+    SomeRegModuleClass(ModuleName name_, ::std::size_t alignment, ::std::size_t regSize)
+        : RegModule<>(name_, alignment), reg1(regSize, "reg1", "Register 1", RW),
+          reg2(regSize, "reg2", "Register 2", RW), reg3(regSize, "reg3", "Register 3", RW) {
+        hvaddr_t addr = 0;
+        this->addRegister(addr, reg1);
+        addr += HV_BIT_TO_BYTE(regSize);
+        addr = mainRegisterFile.getNearestSuperiorAlignedAddress(addr, alignment);
+        this->addRegister(addr, reg2);
+        addr += HV_BIT_TO_BYTE(regSize);
+        addr = mainRegisterFile.getNearestSuperiorAlignedAddress(addr, alignment);
+        this->addRegister(addr, reg3);
     }
 
     virtual ~SomeRegModuleClass() {
@@ -127,12 +133,14 @@ TEST_F(RegModuleTest, ModuleInsertionTest) {
     ::sc_core::sc_start();
 }
 
-TEST_F(RegModuleTest, AlignmentRWTest) {
+TEST_F(RegModuleTest, AlignmentRWTest1) {
     HV_SYSTEMC_RESET_CONTEXT
+    ::sc_core::sc_time zeroTime(::sc_core::SC_ZERO_TIME);
 
-    SomeRegModuleClass rm("RegModuleForAlignmentTest");
+    // alignment: 4 bytes - regSize: 2 bytes
+    SomeRegModuleClass rm("RegModuleForAlignmentTest", 4, 16);
     FooMMModule mod("MyFooModule");
-    mod.socket.bind(rm.memMapSocket); // Just for TLM to be happy
+    mod.socket.bind(rm.memMapSocket);
 
     hvuint8_t tmp1[12];
     hvuint8_t tmp2[12];
@@ -141,33 +149,129 @@ TEST_F(RegModuleTest, AlignmentRWTest) {
         tmp2[i] = 0x00;
     }
     // Writing and reading on 32-bit
-    rm.getMainRegFile().write(0, tmp1, 4);
-    rm.getMainRegFile().read(0, tmp2, 4);
+    MemoryMappedPayload<hvaddr_t> txnWrite;
+    txnWrite.setAddress(0x00);
+    txnWrite.setDataPtr(tmp1);
+    txnWrite.setDataLength(4);
+    txnWrite.setCommand(MEM_MAP_WRITE_COMMAND);
+    mod.socket->b_transport(txnWrite, zeroTime);
+    ASSERT_FALSE(txnWrite.isResponseError());
+
+    MemoryMappedPayload<hvaddr_t> txnRead;
+    txnRead.setAddress(0x00);
+    txnRead.setDataPtr(tmp2);
+    txnRead.setDataLength(4);
+    txnRead.setCommand(MEM_MAP_READ_COMMAND);
+    mod.socket->b_transport(txnRead, zeroTime);
+    ASSERT_FALSE(txnRead.isResponseError());
 
     ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x00)), hvuint16_t(0xF0F0));
     for (int i = 0; i < 4; ++i) {
         if ((i % 4) < 2) {
-            ASSERT_EQ(tmp2[i], hvuint16_t(0xF0));
+            ASSERT_EQ(tmp2[i], hvuint8_t(0xF0));
         } else {
-            ASSERT_EQ(tmp2[i], hvuint16_t(0x00));
+            ASSERT_EQ(tmp2[i], hvuint8_t(0x00));
         }
     }
     // Resetting
     rm.getMainRegFile().getRegister(0x00) = 0;
 
     // Writing and reading on 3*32-bit
-    rm.getMainRegFile().write(0, tmp1, 12);
-    rm.getMainRegFile().read(0, tmp2, 12);
+    txnWrite.setAddress(0x00);
+    txnWrite.setDataPtr(tmp1);
+    txnWrite.setDataLength(12);
+    txnWrite.setCommand(MEM_MAP_WRITE_COMMAND);
+    mod.socket->b_transport(txnWrite, zeroTime);
+    ASSERT_FALSE(txnWrite.isResponseError());
+
+    txnRead.setAddress(0x00);
+    txnRead.setDataPtr(tmp2);
+    txnRead.setDataLength(12);
+    txnRead.setCommand(MEM_MAP_READ_COMMAND);
+    mod.socket->b_transport(txnRead, zeroTime);
+    ASSERT_FALSE(txnRead.isResponseError());
 
     ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x00)), hvuint16_t(0xF0F0));
     ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x04)), hvuint16_t(0xF0F0));
-    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x0C)), hvuint16_t(0xF0F0));
+    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x08)), hvuint16_t(0xF0F0));
     for (int i = 0; i < 12; ++i) {
         if ((i % 4) < 2) {
-            ASSERT_EQ(tmp2[i], hvuint16_t(0xF0));
+            ASSERT_EQ(tmp2[i], hvuint8_t(0xF0));
         } else {
-            ASSERT_EQ(tmp2[i], hvuint16_t(0x00));
+            ASSERT_EQ(tmp2[i], hvuint8_t(0x00));
         }
     }
     ::sc_core::sc_start();
 }
+
+TEST_F(RegModuleTest, AlignmentRWTest2) {
+    HV_SYSTEMC_RESET_CONTEXT
+    ::sc_core::sc_time zeroTime(::sc_core::SC_ZERO_TIME);
+
+    // alignment: 4 bytes - regSize: 2 bytes
+    SomeRegModuleClass rm("RegModuleForAlignmentTest", 4, 48);
+    FooMMModule mod("MyFooModule");
+    mod.socket.bind(rm.memMapSocket);
+
+    hvuint8_t tmp1[24];
+    hvuint8_t tmp2[24];
+    for (int i = 0; i < 24; ++i) {
+        tmp1[i] = 0xF0;
+        tmp2[i] = 0x00;
+    }
+    // Writing and reading on 32-bit
+    MemoryMappedPayload<hvaddr_t> txnWrite;
+    txnWrite.setAddress(0x00);
+    txnWrite.setDataPtr(tmp1);
+    txnWrite.setDataLength(8);
+    txnWrite.setCommand(MEM_MAP_WRITE_COMMAND);
+    mod.socket->b_transport(txnWrite, zeroTime);
+    ASSERT_FALSE(txnWrite.isResponseError());
+
+    MemoryMappedPayload<hvaddr_t> txnRead;
+    txnRead.setAddress(0x00);
+    txnRead.setDataPtr(tmp2);
+    txnRead.setDataLength(8);
+    txnRead.setCommand(MEM_MAP_READ_COMMAND);
+    mod.socket->b_transport(txnRead, zeroTime);
+    ASSERT_FALSE(txnRead.isResponseError());
+
+    ASSERT_EQ(hvuint64_t(rm.getMainRegFile().getRegister(0x00)), hvuint64_t(0xF0F0F0F0F0F0));
+    for (int i = 0; i < 8; ++i) {
+        if ((i % 8) < 6) {
+            ASSERT_EQ(tmp2[i], hvuint8_t(0xF0));
+        } else {
+            ASSERT_EQ(tmp2[i], hvuint8_t(0x00));
+        }
+    }
+    // Resetting
+    rm.getMainRegFile().getRegister(0x00) = 0;
+
+    // Writing and reading on 3*32-bit
+    txnWrite.setAddress(0x00);
+    txnWrite.setDataPtr(tmp1);
+    txnWrite.setDataLength(24);
+    txnWrite.setCommand(MEM_MAP_WRITE_COMMAND);
+    mod.socket->b_transport(txnWrite, zeroTime);
+    ASSERT_FALSE(txnWrite.isResponseError());
+
+    txnRead.setAddress(0x00);
+    txnRead.setDataPtr(tmp2);
+    txnRead.setDataLength(24);
+    txnRead.setCommand(MEM_MAP_READ_COMMAND);
+    mod.socket->b_transport(txnRead, zeroTime);
+    ASSERT_FALSE(txnRead.isResponseError());
+
+    ASSERT_EQ(hvuint64_t(rm.getMainRegFile().getRegister(0x00)), hvuint64_t(0xF0F0F0F0F0F0));
+    ASSERT_EQ(hvuint64_t(rm.getMainRegFile().getRegister(0x08)), hvuint64_t(0xF0F0F0F0F0F0));
+    ASSERT_EQ(hvuint64_t(rm.getMainRegFile().getRegister(0x10)), hvuint64_t(0xF0F0F0F0F0F0));
+    for (int i = 0; i < 24; ++i) {
+        if ((i % 8) < 6) {
+            ASSERT_EQ(tmp2[i], hvuint8_t(0xF0));
+        } else {
+            ASSERT_EQ(tmp2[i], hvuint8_t(0x00));
+        }
+    }
+    ::sc_core::sc_start();
+}
+

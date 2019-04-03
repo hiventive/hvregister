@@ -76,9 +76,9 @@ class SomeRegModuleClass : public RegModule<> {
     SomeRegModuleClass(ModuleName name_)
         : RegModule<>(name_, 4), reg1(16, "reg1", "Register 1", RW),
           reg2(16, "reg2", "Register 2", RW), reg3(16, "reg3", "Register 3", RW) {
-              this->addRegister(0x00, reg1);
-              this->addRegister(0x04, reg2);
-              this->addRegister(0x08, reg3);
+        this->addRegister(0x00, reg1);
+        this->addRegister(0x04, reg2);
+        this->addRegister(0x08, reg3);
     }
 
     virtual ~SomeRegModuleClass() {
@@ -133,22 +133,41 @@ TEST_F(RegModuleTest, AlignmentRWTest) {
     SomeRegModuleClass rm("RegModuleForAlignmentTest");
     FooMMModule mod("MyFooModule");
     mod.socket.bind(rm.memMapSocket); // Just for TLM to be happy
-    
+
     hvuint8_t tmp1[12];
     hvuint8_t tmp2[12];
-    for(int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 12; ++i) {
         tmp1[i] = 0xF0;
         tmp2[i] = 0x00;
     }
+    // Writing and reading on 32-bit
     rm.getMainRegFile().write(0, tmp1, 4);
     rm.getMainRegFile().read(0, tmp2, 4);
-    Register& reg1Tmp = rm.getMainRegFile().getRegister(0);
-    hvuint16_t reg1Val = reg1Tmp;
-    ASSERT_EQ(reg1Val, hvuint16_t(0xF0F0));
-    ASSERT_EQ(tmp2[0], hvuint16_t(0xF0));
-    ASSERT_EQ(tmp2[1], hvuint16_t(0xF0));
-    ASSERT_EQ(tmp2[2], hvuint16_t(0x00));
-    ASSERT_EQ(tmp2[3], hvuint16_t(0x00));
 
+    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x00)), hvuint16_t(0xF0F0));
+    for (int i = 0; i < 4; ++i) {
+        if ((i % 4) < 2) {
+            ASSERT_EQ(tmp2[i], hvuint16_t(0xF0));
+        } else {
+            ASSERT_EQ(tmp2[i], hvuint16_t(0x00));
+        }
+    }
+    // Resetting
+    rm.getMainRegFile().getRegister(0x00) = 0;
+
+    // Writing and reading on 3*32-bit
+    rm.getMainRegFile().write(0, tmp1, 12);
+    rm.getMainRegFile().read(0, tmp2, 12);
+
+    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x00)), hvuint16_t(0xF0F0));
+    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x04)), hvuint16_t(0xF0F0));
+    ASSERT_EQ(hvuint16_t(rm.getMainRegFile().getRegister(0x0C)), hvuint16_t(0xF0F0));
+    for (int i = 0; i < 12; ++i) {
+        if ((i % 4) < 2) {
+            ASSERT_EQ(tmp2[i], hvuint16_t(0xF0));
+        } else {
+            ASSERT_EQ(tmp2[i], hvuint16_t(0x00));
+        }
+    }
     ::sc_core::sc_start();
 }

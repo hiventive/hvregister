@@ -59,17 +59,17 @@ template <unsigned int BUSWIDTH> std::string RegModule<BUSWIDTH>::getInfo() cons
 
 template <unsigned int BUSWIDTH>
 void RegModule<BUSWIDTH>::bTransportCb(mem_access_payload_type &txn, ::sc_core::sc_time &delay) {
+    ::std::size_t alignment = mainRegisterFile.getAlignment();
     ::hv::common::hvaddr_t destination = txn.getAddress();
     ::hv::communication::tlm2::protocols::memorymapped::MemoryMappedCommand cmd(txn.getCommand());
     std::size_t txnSize(txn.getDataLength());
+    ::hv::common::hvuint8_t *dataTmp(txn.getDataPtr());
 
     // Transaction size can be larger than only one register
     // Therefore we concatenate the values of subsequent registers in our buffer
     while (txnSize) {
         Register &regTmp(mainRegisterFile(destination));
         ::std::size_t opSize(HV_MIN(txnSize, regTmp.getSizeInBytes()));
-
-        ::hv::common::hvuint8_t *dataTmp(txn.getDataPtr());
         if (cmd == ::hv::communication::tlm2::protocols::memorymapped::MEM_MAP_READ_COMMAND) {
             if (!regTmp.read(dataTmp, opSize)) {
                 txn.setResponseStatus(::hv::communication::tlm2::protocols::memorymapped::
@@ -83,14 +83,16 @@ void RegModule<BUSWIDTH>::bTransportCb(mem_access_payload_type &txn, ::sc_core::
                 return;
             }
         }
-
-        if (txnSize <= mainRegisterFile.getAlignment()) {
-            return;
+        ::std::size_t offset(alignment);
+        if (opSize > alignment) {
+            offset =
+                mainRegisterFile.getNearestSuperiorAlignedAddress(destination + opSize, alignment) -
+                destination;
         }
-        
-        txnSize -= mainRegisterFile.getAlignment();
-        dataTmp += mainRegisterFile.getAlignment();
-        destination += mainRegisterFile.getAlignment();
+
+        txnSize -= offset < txnSize ? offset : txnSize;
+        dataTmp += offset;
+        destination += offset;
     }
 }
 

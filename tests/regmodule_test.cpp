@@ -134,8 +134,12 @@ TEST_F(RegModuleTest, AlignmentRWTest) {
     FooMMModule mod("MyFooModule");
     mod.socket.bind(rm.memMapSocket); // Just for TLM to be happy
     
-    hvuint8_t tmp1[12] = {0xF0};
-    hvuint8_t tmp2[12] = {0};
+    hvuint8_t tmp1[12];
+    hvuint8_t tmp2[12];
+    for(int i = 0; i < 12; ++i) {
+        tmp1[i] = 0xF0;
+        tmp2[i] = 0x00;
+    }
     rm.getMainRegFile().write(0, tmp1, 4);
     rm.getMainRegFile().read(0, tmp2, 4);
     Register& reg1Tmp = rm.getMainRegFile().getRegister(0);
